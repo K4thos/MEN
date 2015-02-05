@@ -1,0 +1,3 @@
+"SPEL"	"MEN_dummy_open_spl"	"dummy open"	"0"	"0"	"0"	
+"SPEL"	"MEN_bashLock_spl"	"Lock Bash"	"4"	"0"	"0"	
+"SPEL"	"MEN_bashSneak_spl"	"Lock Bash"	"4"	"0"	"0"	

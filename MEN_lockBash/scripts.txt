@@ -1,0 +1,338 @@
+# MEN_bash_global_scr =========================================================
+Begin MEN_bash_global_scr
+		; targeted script running on PC, triggered by MEN_bash_init
+
+	long lPCTarget
+	long lRefType
+	long lLastTarget
+	long lTrapID
+	long lTrapName
+	long lMatch
+	long lLockLevel
+	long lKeyPressed
+	float fTimerSneak
+	float fTimerDelay
+	float fTimerPower
+	float fTimerFat
+	float fFatCur
+	float fFatMax
+	float fFatigueRatio
+	float fLuck
+	float fSecurity
+		;	float fFatigueTerm
+	float fChance
+	float fWeaponMult
+	float fLuckSqrt
+		;	float fTrigger
+	float fStrength
+	short sFrame
+	short sCrimeSav
+	short sMessage
+	short sBashed
+	short sTrapCost
+	short sRand
+
+	if ( MEN_bash_reload_npc->GetScale >= 0.50 ) ; dummy npc hidden in ToddTest cell
+		set lPCTarget to 0
+		set lRefType to 0
+		set lLastTarget to 0
+		set lTrapID to 0
+		set lTrapName to 0
+		set lMatch to 0
+		set lLockLevel to 0
+		set lKeyPressed to 0
+		set fTimerSneak to 0
+		set fTimerDelay to 0
+		set fTimerPower to 0
+		set sMessage to 0
+		set sBashed to 0
+		StopScript "MEN_bash_global_scr"
+	endif
+
+	if ( MenuMode == 1 )
+		return
+	endif
+
+	if ( GetSpellEffects "MEN_bashLock_spl" )
+		RemoveSpell "MEN_bashLock_spl"
+		RemoveSpellEffects "MEN_bashLock_spl"
+	endif
+
+	if ( fTimerSneak > 0 )
+		if ( sFrame < 10 )
+			set sFrame to ( sFrame + 1 )
+		elseif ( GetSpellEffects "MEN_bashSneak_spl" )
+			set sFrame to 0
+			set fTimerSneak to ( fTimerDelay - GetSecondsPassed )
+			if ( GetPCCrimeLevel == sCrimeSav )
+				MEN_dummy_door->ExplodeSpell "MEN_dummy_open_spl"
+			else
+				set fTimerSneak to 0
+			endif
+			if ( fTimerSneak <= 0 )
+				RemoveSpell "MEN_bashSneak_spl"
+			endif
+		endif
+	endif
+
+	if ( fTimerDelay > 0 )
+		set fTimerDelay to ( fTimerDelay - GetSecondsPassed )
+		return
+	endif
+
+	setx lPCTarget to xGetPCTarget
+
+	if ( lPCTarget == 0 )
+		set sMessage to 1
+		set fTimerPower to 0
+		set sBashed to 0
+		return
+	endif
+
+	setx lRefType to lPCTarget->xRefType
+	if ( lRefType == 1414418243 ) ; Container
+	elseif ( lRefType == 1380929348 ) ; Door
+	else
+		set fTimerPower to 0
+		set sBashed to 0
+		return
+	endif
+
+	if ( lPCTarget != lLastTarget )
+		set lLastTarget to lPCTarget
+		set sMessage to 1
+	endif
+
+	if ( fTimerFat < 0.5 ) ; not run every frame just in case to not interfare with vanilla calculations
+		set fTimerFat to ( fTimerFat + GetSecondsPassed )
+	else
+		set fFatCur to GetFatigue
+		if ( fFatCur > 0 )
+			ModCurrentFatigue 10000
+			set fFatMax to GetFatigue
+			set fFatigueRatio to ( fFatCur / fFatMax )
+			set fFatCur to ( fFatMax - fFatCur )
+			set fFatCur to ( 0 - fFatCur )
+			ModCurrentFatigue fFatCur
+		endif
+		set fTimerFat to 0
+	endif
+
+	set fLuck to ( GetLuck )
+	setx lTrapID lTrapName sTrapCost to lPCTarget->xGetTrap
+
+	ifx ( sMessage )
+		ifx ( lTrapID )
+			set fSecurity to GetSecurity
+				;	set fFatigueTerm to ( 1.25 - 0.5 * ( 1 - fFatigueRatio ) ) ; default GMST: fFatigueBase = 1.25 ; fFatigueMult = 0.5
+				;	set fChance to ( 0.1 * fLuck + fSecurity - 0.5 * sTrapCost * fFatigueTerm )
+			set fChance to ( 0.1 * fLuck + fSecurity - 0.5 * sTrapCost * fFatigueRatio ) ; default GMST: fTrapCostMult = 0 (assigned -0.5 value proposed by OpenMW wiki instead)
+				;	MessageBox "Trap inspect score = %g (sTrapCost = %g)" fChance sTrapCost
+			if ( fChance >= 75 ) ; trap identification threshold
+			elseif ( fChance >= 50 ) ; trap detection threshold
+				set fChance to 0
+			else
+				set fChance to 0
+				set sMessage to 0
+			endif
+			ifx ( fChance )
+				setx lMatch to xStringMatch lTrapName ".*[Tt]rap.*"
+				ifx ( lMatch )
+					xMessageFix "Trap detected: %s." lTrapName
+					MessageBox "hee hee hee hee hee hee hee hee hee hee hee hee hee hee hee hee hee hee hee hee hee hee hee hee hee hee hee hee"
+				else
+					xMessageFix "%s detected." lTrapName
+					MessageBox "hee hee hee hee hee hee hee hee hee hee hee hee hee hee hee hee hee hee hee hee hee hee hee hee hee hee hee hee"
+				endif
+			else
+				if ( sMessage == 1 )
+					MessageBox "Trap detected."
+				endif
+			endif
+		endif
+		set sMessage to 0
+	endif
+
+	if ( GetWeaponDrawn == 0 )
+		set fTimerPower to 0
+		set sBashed to 0
+		return
+	elseif ( GetWeaponType >= 9 ) ; Bow, Crossbow, Thrown Weapon
+		if ( GetWeaponType <= 11 )
+			set fTimerPower to 0
+			set sBashed to 0
+			return
+		endif
+	endif
+
+	xSetRef lPCTarget
+	if ( GetLocked == 0 )
+		set fTimerPower to 0
+		set sBashed to 0
+		return
+	endif
+
+	setx lLockLevel to lPCTarget->xGetLockLevel
+	if ( lLockLevel <= 0 )
+		set fTimerPower to 0
+		set sBashed to 0
+		return
+	endif
+
+	setx lKeyPressed to xKeyPressed 01 ; Left mouse button
+	setx lKeyPressed to xKeyPressed 01
+
+	if ( lKeyPressed )
+		if ( GetFatigue <= 0 )
+			set fTimerPower to 0
+			return
+		endif
+		if ( fTimerPower < 2 )
+			set fTimerPower to ( fTimerPower + GetSecondsPassed )
+		endif
+		set sBashed to 1
+		return
+	elseif ( sBashed == 0 )
+		return
+	endif
+	set sBashed to 0
+
+	xSetRef lPCTarget
+	if ( GetDistance Player > 150 )
+		set fTimerPower to 0
+		return
+	endif
+
+	xSetRef lPCTarget
+	PlaySound3D "Heavy armor hit"
+
+	if ( fTimerSneak <= 0 )
+		set sCrimeSav to GetPCCrimeLevel
+		AddSpell "MEN_bashSneak_spl"
+	endif
+
+	set fTimerSneak to 2
+	set fTimerDelay to 0.5
+	set fTimerFat to 0.5 ; no need for delay
+
+	if ( GetWeaponType == -1 ) ; Unarmed
+		set fFatCur to 3
+		set fWeaponMult to 1
+	elseif ( GetWeaponType == 0 ) ; Short blade, 1-Hand
+		set fFatCur to 2
+		set fWeaponMult to 1
+		AddSpell "MEN_bashLock_spl" ; 5-10 Disintegrate Weapon magic effect
+	elseif ( GetWeaponType == 1 ) ; Long blade, 1-Hand
+		set fFatCur to 2
+		set fWeaponMult to 1
+		AddSpell "MEN_bashLock_spl"
+	elseif ( GetWeaponType == 2 ) ; Long blade, 2-Hand
+		set fFatCur to 2
+		set fWeaponMult to 1
+		AddSpell "MEN_bashLock_spl"
+	elseif ( GetWeaponType == 3 ) ; Blunt, 1-Hand
+		set fFatCur to 2
+		set fWeaponMult to 1.5
+		AddSpell "MEN_bashLock_spl"
+	elseif ( GetWeaponType == 4 ) ; Blunt, 2-Hand Close
+		set fFatCur to 2
+		set fWeaponMult to 1.5
+		AddSpell "MEN_bashLock_spl"
+	elseif ( GetWeaponType == 5 ) ; Blunt, 2-Hand Wide
+		set fFatCur to 2
+		set fWeaponMult to 1.5
+		AddSpell "MEN_bashLock_spl"
+	elseif ( GetWeaponType == 6 ) ; Spear, 2-Hand Wide
+		set fFatCur to 2
+		set fWeaponMult to 1
+		AddSpell "MEN_bashLock_spl"
+	elseif ( GetWeaponType == 7 ) ; Axe, 1-Hand
+		set fFatCur to 2
+		set fWeaponMult to 1.5
+		AddSpell "MEN_bashLock_spl"
+	elseif ( GetWeaponType == 8 ) ; Axe, 2-Hand Close
+		set fFatCur to 2
+		set fWeaponMult to 1.5
+		AddSpell "MEN_bashLock_spl"
+	endif
+
+	set fFatCur to ( ( ( fFatCur + fFatCur * fTimerPower ) / -100 ) * fFatMax )
+		;	MessageBox "Drained fatigue = %g" fFatCur
+	ModCurrentFatigue fFatCur
+
+	set fLuckSqrt to ( GetSquareRoot fLuck )
+
+		;	ifx ( lTrapID )
+		;		set fTrigger to ( 75 - fLuckSqrt )
+		;			;	MessageBox "Percentage chance to trigger a trap for each bash attempt = %g" fTrigger
+		;		set sRand to Random 101
+		;		if ( fTrigger > sRand )
+		;			set fTrigger to 0
+		;		endif
+		;		ifx ( fTrigger )
+		;			lPCTarget->xExplodeSpell lTrapID
+		;			lPCTarget->xSetTrap 0
+		;		endif
+		;	endif
+
+	set fStrength to ( ( GetStrength / 2 ) * fWeaponMult )
+		;	MessageBox "Maximum Lock Level that you can bash = %g (Lock Level = %g)" fStrength lLockLevel
+	if ( fStrength < lLockLevel )
+		MessageBox "You are not strong enough to bash this lock."
+		set fTimerPower to 0
+		return
+	endif
+
+	set fChance to ( ( fStrength / lLockLevel + fTimerPower ) * fLuckSqrt * fFatigueRatio )
+		;	MessageBox "Percentage chance for bashing the lock after hitting it = %g (fStrength = %g, lLockLevel = %g, fTimerPower = %g, fLuckSqrt = %g, fFatigueRatio = %g)" fChance fStrength lLockLevel fTimerPower fLuckSqrt fFatigueRatio
+	set sRand to Random 101
+	if ( fChance < sRand )
+		set fTimerPower to 0
+		return
+	endif
+
+		;	ifx ( lTrapID )
+		;		ifx ( fTrigger ) ; trap already exploded
+		;		else
+		;			set fTrigger to ( 50 + fLuckSqrt )
+		;				;	MessageBox "Percentage chance to disarm a trap on successful bash = %g" fTrigger
+		;			set sRand to Random 101
+		;			if ( fTrigger > sRand )
+		;				set fTrigger to 0
+		;			endif
+		;			ifx ( fTrigger )
+		;				lPCTarget->xSetTrap 0
+		;				MessageBox "Trap disarmed!"
+		;			endif
+		;		endif
+		;	endif
+
+	set fTimerPower to 0
+
+	xSetRef lPCTarget
+	PlaySound3D "Disarm Trap"
+
+	xSetRef lPCTarget
+	Unlock
+
+End 
+
+# MEN_bash_init ===============================================================
+Begin MEN_bash_init
+
+	float fTimer
+
+	if ( fTimer < 1 )
+		set fTimer to ( fTimer + GetSecondsPassed )
+		return
+	endif
+	set fTimer to 0
+
+	MEN_bash_reload_npc->SetScale 0.45
+
+	Player->StartScript "MEN_bash_global_scr"
+
+	StopScript "MEN_bash_init"
+
+End 
+

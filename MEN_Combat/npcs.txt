@@ -1,0 +1,1 @@
+"NPC_"	"MEN_com_reload_npc"	"MEN_com_reload_npc"	"2"	"41"	"123"	"154"	"0"	"50"	"0"	"30"	"30"	"0"	"30"		"0"	"Commoner"	"Wood Elf"	"1"	"31"	"41"	"31"	"51"	"54"	"41"	"52"	"40"	
